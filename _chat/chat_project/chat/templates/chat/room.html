@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Room</title>
+</head>
+<body>
+
+<h2>Welcome, {{ request.user.username }}</h2>
+<h3>Room: {{ room_name }}</h3>
+
+
+<div id="room-name" style="display:none;">"{{ room_name }}"</div>
+
+
+<textarea id="chat-log" cols="100" rows="20" readonly>
+{% for msg in messages %}
+{{ msg.user.username }}: {{ msg.content }}
+{% endfor %}
+</textarea><br>
+
+
+<input id="chat-message-input" type="text" size="100" placeholder="Type your message...">
+<button id="chat-message-submit">Send</button>
+
+<script>
+ 
+  const roomName = JSON.parse(document.getElementById('room-name').textContent);
+
+  
+  const chatSocket = new WebSocket(
+    'ws://' + window.location.host + '/ws/chat/' + roomName + '/'
+  );
+
+  
+  chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    const chatLog = document.querySelector('#chat-log');
+    chatLog.value += data.message + '\n';
+  };
+
+ 
+  chatSocket.onclose = function(e) {
+    console.error('WebSocket closed unexpectedly:', e);
+  };
+
+  
+  document.querySelector('#chat-message-submit').onclick = function(e) {
+    const input = document.querySelector('#chat-message-input');
+    const msg = input.value.trim();
+
+    if (!msg) return;
+
+    if (chatSocket.readyState === WebSocket.OPEN) {
+      chatSocket.send(JSON.stringify({
+        'message': msg,
+        'username': "{{ request.user.username }}"
+      }));
+      input.value = '';
+    } else {
+      alert("Connection closed! Please refresh the page.");
+    }
+  };
+
+  
+  document.querySelector('#chat-message-input').onkeyup = function(e) {
+    if (e.key === 'Enter') {
+      document.querySelector('#chat-message-submit').click();
+    }
+  };
+</script>
+
+</body>
+</html>
